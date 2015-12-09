@@ -23,7 +23,7 @@ type JoinNode struct {
 }
 
 // Create a new  JoinNode, which takes pairs from parent streams combines them into a single point.
-func newJoinNode(et *ExecutingTask, n *pipeline.JoinNode) (*JoinNode, error) {
+func newJoinNode(et *ExecutingTask, n *pipeline.JoinNode, l *log.Logger) (*JoinNode, error) {
 	for _, name := range n.Names {
 		if len(name) == 0 {
 			return nil, fmt.Errorf("must provide a prefix name for the join node, see .as() property method")
@@ -42,7 +42,7 @@ func newJoinNode(et *ExecutingTask, n *pipeline.JoinNode) (*JoinNode, error) {
 
 	jn := &JoinNode{
 		j:    n,
-		node: node{Node: n, et: et},
+		node: node{Node: n, et: et, logger: l},
 	}
 	// Set fill
 	switch fill := n.Fill.(type) {

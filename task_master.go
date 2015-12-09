@@ -10,12 +10,17 @@ import (
 	"github.com/influxdata/kapacitor/models"
 	"github.com/influxdata/kapacitor/pipeline"
 	"github.com/influxdata/kapacitor/services/httpd"
+	"github.com/influxdata/kapacitor/tick"
 	"github.com/influxdb/influxdb/client"
 	"github.com/influxdb/influxdb/cluster"
 )
 
 type LogService interface {
 	NewLogger(prefix string, flag int) *log.Logger
+}
+type UDFService interface {
+	FunctionList() []string
+	FunctionInfo(name string) (UDFProcessInfo, bool)
 }
 
 var ErrTaskMasterClosed = errors.New("TaskMaster is closed")
@@ -28,6 +33,9 @@ type TaskMaster struct {
 		DelRoutes([]httpd.Route)
 		URL() string
 	}
+
+	UDFService UDFService
+
 	InfluxDBService interface {
 		NewClient() (*client.Client, error)
 	}
@@ -151,6 +159,39 @@ func (tm *TaskMaster) waitForForks() {
 	tm.drained = true
 	tm.writePointsIn.Close()
 	tm.wg.Wait()
+}
+
+func (tm *TaskMaster) CreateTICKScope() *tick.Scope {
+	scope := tick.NewScope()
+	scope.Set("influxql", newInfluxQL())
+	scope.Set("time", func(d time.Duration) time.Duration { return d })
+	// Add dynamic methods to the scope for UDFs
+	if tm.UDFService != nil {
+		for _, f := range tm.UDFService.FunctionList() {
+			f := f
+			info, _ := tm.UDFService.FunctionInfo(f)
+			scope.SetDynamicMethod(
+				f,
+				tick.DynamicMethod(func(self interface{}, args ...interface{}) (interface{}, error) {
+					parent, ok := self.(pipeline.Node)
+					if !ok {
+						return nil, fmt.Errorf("cannot call %s on %T", f, self)
+					}
+					udf := pipeline.NewUDF(
+						parent,
+						f,
+						info.Cmd,
+						info.Timeout,
+						info.Wants,
+						info.Provides,
+						info.Options,
+					)
+					return udf, nil
+				}),
+			)
+		}
+	}
+	return scope
 }
 
 func (tm *TaskMaster) StartTask(t *Task) (*ExecutingTask, error) {

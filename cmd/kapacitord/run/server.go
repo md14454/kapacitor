@@ -26,6 +26,7 @@ import (
 	"github.com/influxdata/kapacitor/services/smtp"
 	"github.com/influxdata/kapacitor/services/stats"
 	"github.com/influxdata/kapacitor/services/task_store"
+	"github.com/influxdata/kapacitor/services/udf"
 	"github.com/influxdata/kapacitor/services/udp"
 	"github.com/influxdata/kapacitor/services/victorops"
 	"github.com/influxdata/kapacitor/wlog"
@@ -128,6 +129,7 @@ func NewServer(c *Config, buildInfo *BuildInfo, logService logging.Interface) (*
 	s.appendInfluxDBService(c.InfluxDB, c.Hostname)
 	s.appendTaskStoreService(c.Task)
 	s.appendReplayStoreService(c.Replay)
+	s.appendUDFService(c.UDF)
 	s.appendOpsGenieService(c.OpsGenie)
 	s.appendVictorOpsService(c.VictorOps)
 	s.appendPagerDutyService(c.PagerDuty)
@@ -211,6 +213,14 @@ func (s *Server) appendReplayStoreService(c replay.Config) {
 	srv.TaskMaster = s.TaskMaster
 
 	s.ReplayService = srv
+	s.Services = append(s.Services, srv)
+}
+
+func (s *Server) appendUDFService(c udf.Config) {
+	l := s.LogService.NewLogger("[udf] ", log.LstdFlags)
+	srv := udf.NewService(c, l)
+
+	s.TaskMaster.UDFService = srv
 	s.Services = append(s.Services, srv)
 }
 

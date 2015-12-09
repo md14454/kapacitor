@@ -1,6 +1,8 @@
 package kapacitor
 
 import (
+	"log"
+
 	"github.com/influxdata/kapacitor/pipeline"
 )
 
@@ -11,10 +13,10 @@ type UnionNode struct {
 
 // Create a new  UnionNode which combines all parent data streams into a single stream.
 // No transformation of any kind is performed.
-func newUnionNode(et *ExecutingTask, n *pipeline.UnionNode) (*UnionNode, error) {
+func newUnionNode(et *ExecutingTask, n *pipeline.UnionNode, l *log.Logger) (*UnionNode, error) {
 	un := &UnionNode{
 		u:    n,
-		node: node{Node: n, et: et},
+		node: node{Node: n, et: et, logger: l},
 	}
 	un.node.runF = un.runUnion
 	return un, nil

@@ -2,6 +2,7 @@ package kapacitor
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"path"
 	"sync"
@@ -24,9 +25,9 @@ type HTTPOutNode struct {
 }
 
 // Create a new  HTTPOutNode which caches the most recent item and exposes it over the HTTP API.
-func newHTTPOutNode(et *ExecutingTask, n *pipeline.HTTPOutNode) (*HTTPOutNode, error) {
+func newHTTPOutNode(et *ExecutingTask, n *pipeline.HTTPOutNode, l *log.Logger) (*HTTPOutNode, error) {
 	hn := &HTTPOutNode{
-		node:           node{Node: n, et: et},
+		node:           node{Node: n, et: et, logger: l},
 		c:              n,
 		groupSeriesIdx: make(map[models.GroupID]int),
 	}

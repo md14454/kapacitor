@@ -16,6 +16,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/influxdata/kapacitor"
 	"github.com/influxdata/kapacitor/services/httpd"
+	"github.com/influxdata/kapacitor/tick"
 )
 
 const taskDB = "task.db"
@@ -38,6 +39,7 @@ type Service struct {
 		StopTask(name string) error
 		IsExecuting(name string) bool
 		ExecutingDot(name string) string
+		CreateTICKScope() *tick.Scope
 	}
 	logger *log.Logger
 }
@@ -373,7 +375,7 @@ func (ts *Service) handleDisable(w http.ResponseWriter, r *http.Request) {
 func (ts *Service) Save(task *rawTask) error {
 
 	// Validate task
-	_, err := kapacitor.NewTask(task.Name, task.TICKscript, task.Type, task.DBRPs)
+	_, err := kapacitor.NewTask(task.Name, task.TICKscript, task.Type, task.DBRPs, ts.TaskMaster.CreateTICKScope())
 	if err != nil {
 		return fmt.Errorf("invalid task: %s", err)
 	}
@@ -455,7 +457,7 @@ func (ts *Service) Load(name string) (*kapacitor.Task, error) {
 	if err != nil {
 		return nil, err
 	}
-	return kapacitor.NewTask(task.Name, task.TICKscript, task.Type, task.DBRPs)
+	return kapacitor.NewTask(task.Name, task.TICKscript, task.Type, task.DBRPs, ts.TaskMaster.CreateTICKScope())
 }
 
 func (ts *Service) Enable(name string) error {

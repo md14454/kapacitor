@@ -9,18 +9,22 @@ import (
 	"net/http/httptest"
 	"os"
 	"path"
+	"reflect"
 	"testing"
 	"text/template"
 	"time"
 
 	"github.com/influxdata/kapacitor"
 	"github.com/influxdata/kapacitor/clock"
+	cmd_test "github.com/influxdata/kapacitor/command/test"
+	"github.com/influxdata/kapacitor/pipeline"
 	"github.com/influxdata/kapacitor/services/hipchat"
 	"github.com/influxdata/kapacitor/services/httpd"
 	"github.com/influxdata/kapacitor/services/opsgenie"
 	"github.com/influxdata/kapacitor/services/pagerduty"
 	"github.com/influxdata/kapacitor/services/slack"
 	"github.com/influxdata/kapacitor/services/victorops"
+	"github.com/influxdata/kapacitor/udf"
 	"github.com/influxdata/kapacitor/wlog"
 	"github.com/influxdb/influxdb/client"
 	imodels "github.com/influxdb/influxdb/models"
@@ -74,7 +78,7 @@ stream
 		},
 	}
 
-	testStreamerWithOutput(t, "TestStream_Derivative", script, 15*time.Second, er)
+	testStreamerWithOutput(t, "TestStream_Derivative", script, 15*time.Second, er, nil, false)
 }
 
 func TestStream_DerivativeUnit(t *testing.T) {
@@ -104,7 +108,7 @@ stream
 		},
 	}
 
-	testStreamerWithOutput(t, "TestStream_Derivative", script, 15*time.Second, er)
+	testStreamerWithOutput(t, "TestStream_Derivative", script, 15*time.Second, er, nil, false)
 }
 
 func TestStream_DerivativeNN(t *testing.T) {
@@ -134,7 +138,7 @@ stream
 		},
 	}
 
-	testStreamerWithOutput(t, "TestStream_DerivativeNN", script, 15*time.Second, er)
+	testStreamerWithOutput(t, "TestStream_DerivativeNN", script, 15*time.Second, er, nil, false)
 }
 
 func TestStream_DerivativeN(t *testing.T) {
@@ -163,7 +167,7 @@ stream
 		},
 	}
 
-	testStreamerWithOutput(t, "TestStream_DerivativeNN", script, 15*time.Second, er)
+	testStreamerWithOutput(t, "TestStream_DerivativeNN", script, 15*time.Second, er, nil, false)
 }
 
 func TestStream_Window(t *testing.T) {
@@ -217,7 +221,7 @@ stream
 		},
 	}
 
-	testStreamerWithOutput(t, "TestStream_Window", script, 13*time.Second, er)
+	testStreamerWithOutput(t, "TestStream_Window", script, 13*time.Second, er, nil, false)
 }
 
 func TestStream_SimpleMR(t *testing.T) {
@@ -246,7 +250,7 @@ stream
 		},
 	}
 
-	testStreamerWithOutput(t, "TestStream_SimpleMR", script, 15*time.Second, er)
+	testStreamerWithOutput(t, "TestStream_SimpleMR", script, 15*time.Second, er, nil, false)
 }
 
 func TestStream_SimpleWhere(t *testing.T) {
@@ -276,7 +280,7 @@ stream
 		},
 	}
 
-	testStreamerWithOutput(t, "TestStream_SimpleMR", script, 15*time.Second, er)
+	testStreamerWithOutput(t, "TestStream_SimpleMR", script, 15*time.Second, er, nil, false)
 }
 
 func TestStream_VarWhereString(t *testing.T) {
@@ -306,7 +310,7 @@ stream
 		},
 	}
 
-	testStreamerWithOutput(t, "TestStream_SimpleMR", script, 15*time.Second, er)
+	testStreamerWithOutput(t, "TestStream_SimpleMR", script, 15*time.Second, er, nil, false)
 }
 
 func TestStream_VarWhereRegex(t *testing.T) {
@@ -336,7 +340,7 @@ stream
 		},
 	}
 
-	testStreamerWithOutput(t, "TestStream_SimpleMR", script, 15*time.Second, er)
+	testStreamerWithOutput(t, "TestStream_SimpleMR", script, 15*time.Second, er, nil, false)
 }
 
 func TestStream_GroupBy(t *testing.T) {
@@ -384,7 +388,7 @@ stream
 		},
 	}
 
-	testStreamerWithOutput(t, "TestStream_GroupBy", script, 13*time.Second, er)
+	testStreamerWithOutput(t, "TestStream_GroupBy", script, 13*time.Second, er, nil, false)
 }
 
 func TestStream_Join(t *testing.T) {
@@ -455,7 +459,7 @@ errorCounts.join(viewCounts)
 		},
 	}
 
-	testStreamerWithOutput(t, "TestStream_Join", script, 13*time.Second, er, true)
+	testStreamerWithOutput(t, "TestStream_Join", script, 13*time.Second, er, nil, true)
 }
 
 func TestStream_JoinTolerance(t *testing.T) {
@@ -515,7 +519,7 @@ errorCounts.join(viewCounts)
 		},
 	}
 
-	testStreamerWithOutput(t, "TestStream_JoinTolerance", script, 13*time.Second, er, true)
+	testStreamerWithOutput(t, "TestStream_JoinTolerance", script, 13*time.Second, er, nil, true)
 }
 
 func TestStream_JoinFill(t *testing.T) {
@@ -573,7 +577,7 @@ errorCounts.join(viewCounts)
 		},
 	}
 
-	testStreamerWithOutput(t, "TestStream_JoinFill", script, 13*time.Second, er, true)
+	testStreamerWithOutput(t, "TestStream_JoinFill", script, 13*time.Second, er, nil, true)
 }
 
 func TestStream_JoinN(t *testing.T) {
@@ -614,7 +618,7 @@ cpu.join(mem, disk)
 		},
 	}
 
-	testStreamerWithOutput(t, "TestStream_JoinN", script, 15*time.Second, er)
+	testStreamerWithOutput(t, "TestStream_JoinN", script, 15*time.Second, er, nil, false)
 }
 
 func TestStream_Union(t *testing.T) {
@@ -653,7 +657,7 @@ cpu.union(mem, disk)
 		},
 	}
 
-	testStreamerWithOutput(t, "TestStream_Union", script, 15*time.Second, er)
+	testStreamerWithOutput(t, "TestStream_Union", script, 15*time.Second, er, nil, false)
 }
 
 func TestStream_Aggregations(t *testing.T) {
@@ -1103,48 +1107,150 @@ stream
 			string(script.Bytes()),
 			13*time.Second,
 			tc.ER,
+			nil,
+			false,
 		)
 	}
 }
 
 func TestStream_CustomFunctions(t *testing.T) {
-	t.Skip()
 	var script = `
-var fMap = loadMapFunc('./TestCustomMapFunction.py')
-var fReduce = loadReduceFunc('./TestCustomReduceFunction.py')
 stream
 	.from().measurement('cpu')
 	.where(lambda: "host" == 'serverA')
 	.window()
-		.period(1s)
-		.every(1s)
-	.map(fMap, 'idle')
-	.reduce(fReduce)
-	.cache()
+		.period(10s)
+		.every(10s)
+	.mapReduce(influxql.count('value'))
+	.customFunc()
+		.opt1('count')
+		.opt2(FALSE, 1, 1.0, '1.0', 1s)
+	.httpOut('TestStream_CustomFunctions')
 `
 
-	//er := kapacitor.Result{}
+	cmd := cmd_test.NewCommandHelper()
+	udfService := UDFService{}
+	udfService.FunctionListFunc = func() []string {
+		return []string{"customFunc"}
+	}
+	udfService.FunctionInfoFunc = func(name string) (info kapacitor.UDFProcessInfo, ok bool) {
+		if name != "customFunc" {
+			return
+		}
+		info.Cmd = cmd
+		info.Wants = pipeline.StreamEdge
+		info.Provides = pipeline.StreamEdge
+		info.Options = map[string]*udf.OptionInfo{
+			"opt1": {
+				ValueTypes: []udf.ValueType{udf.ValueType_STRING},
+			},
+			"opt2": {
+				ValueTypes: []udf.ValueType{
+					udf.ValueType_BOOL,
+					udf.ValueType_INT,
+					udf.ValueType_DOUBLE,
+					udf.ValueType_STRING,
+					udf.ValueType_DURATION,
+				},
+			},
+		}
+		return
+	}
 
-	testStreamer(t, "TestStream_CustomFunctions", script)
-}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		req := <-cmd.Requests
+		i, ok := req.Message.(*udf.Request_Init)
+		if !ok {
+			t.Error("expected init message")
+		}
+		init := i.Init
 
-func TestStream_CustomMRFunction(t *testing.T) {
-	t.Skip()
-	var script = `
-var fMapReduce = loadMapReduceFunc('./TestCustomMapReduceFunction.py')
-stream
-	.from().measurement('cpu')
-	.where(lambda: "host" = 'serverA')
-	.window()
-		.period(1s)
-		.every(1s)
-	.mapReduce(fMap, 'idle')
-	.cache()
-`
+		if got, exp := len(init.Options), 2; got != exp {
+			t.Fatalf("unexpected number of options in init request, got %d exp %d", got, exp)
+		}
+		for i, opt := range init.Options {
+			exp := &udf.Option{}
+			switch i {
+			case 0:
+				exp.Name = "opt1"
+				exp.Values = []*udf.OptionValue{
+					{
+						Type:  udf.ValueType_STRING,
+						Value: &udf.OptionValue_StringValue{"count"},
+					},
+				}
+			case 1:
+				exp.Name = "opt2"
+				exp.Values = []*udf.OptionValue{
+					{
+						Type:  udf.ValueType_BOOL,
+						Value: &udf.OptionValue_BoolValue{false},
+					},
+					{
+						Type:  udf.ValueType_INT,
+						Value: &udf.OptionValue_IntValue{1},
+					},
+					{
+						Type:  udf.ValueType_DOUBLE,
+						Value: &udf.OptionValue_DoubleValue{1.0},
+					},
+					{
+						Type:  udf.ValueType_STRING,
+						Value: &udf.OptionValue_StringValue{"1.0"},
+					},
+					{
+						Type:  udf.ValueType_DURATION,
+						Value: &udf.OptionValue_DurationValue{int64(time.Second)},
+					},
+				}
+			}
+			if !reflect.DeepEqual(exp, opt) {
+				t.Errorf("unexpected init option %d\ngot %v\nexp %v", i, opt, exp)
+			}
+		}
 
-	//er := kapacitor.Result{}
+		// read all requests and wait till the chan is closed
+		for req := range cmd.Requests {
+			p, ok := req.Message.(*udf.Request_Point)
+			if ok {
+				pt := p.Point
+				resp := &udf.Response{
+					Message: &udf.Response_Point{
+						Point: &udf.Point{
+							Name:         pt.Name,
+							Time:         pt.Time,
+							Group:        pt.Group,
+							Tags:         pt.Tags,
+							FieldsDouble: map[string]float64{"customField": 42.0},
+						},
+					},
+				}
+				cmd.Responses <- resp
+			}
+		}
+		if err := <-cmd.ErrC; err != nil {
+			t.Error(err)
+		}
+	}()
 
-	testStreamer(t, "TestStream_CustomMRFunction", script)
+	er := kapacitor.Result{
+		Series: imodels.Rows{
+			{
+				Name:    "cpu",
+				Tags:    nil,
+				Columns: []string{"time", "customField"},
+				Values: [][]interface{}{[]interface{}{
+					time.Date(1971, 1, 1, 0, 0, 10, 0, time.UTC),
+					42.0,
+				}},
+			},
+		},
+	}
+
+	testStreamerWithOutput(t, "TestStream_CustomFunctions", script, 15*time.Second, er, udfService, false)
+	<-done
 }
 
 func TestStream_Alert(t *testing.T) {
@@ -1263,7 +1369,7 @@ stream
 			.channel('@jim')
 `
 
-	clock, et, replayErr, tm := testStreamer(t, "TestStream_Alert", script)
+	clock, et, replayErr, tm := testStreamer(t, "TestStream_Alert", script, nil)
 	defer tm.Close()
 
 	c := slack.NewConfig()
@@ -1342,7 +1448,7 @@ stream
 			.token('testtokenTestRoom')
 `
 
-	clock, et, replayErr, tm := testStreamer(t, "TestStream_Alert", script)
+	clock, et, replayErr, tm := testStreamer(t, "TestStream_Alert", script, nil)
 	defer tm.Close()
 
 	c := hipchat.NewConfig()
@@ -1462,7 +1568,7 @@ stream
 			.recipients('test_recipient2', 'another_recipient')
 `
 
-	clock, et, replayErr, tm := testStreamer(t, "TestStream_Alert", script)
+	clock, et, replayErr, tm := testStreamer(t, "TestStream_Alert", script, nil)
 	defer tm.Close()
 	c := opsgenie.NewConfig()
 	c.URL = ts.URL
@@ -1535,7 +1641,7 @@ stream
 		.pagerDuty()
 `
 
-	clock, et, replayErr, tm := testStreamer(t, "TestStream_Alert", script)
+	clock, et, replayErr, tm := testStreamer(t, "TestStream_Alert", script, nil)
 	defer tm.Close()
 	c := pagerduty.NewConfig()
 	c.URL = ts.URL
@@ -1619,7 +1725,7 @@ stream
 			.routingKey('test_key2')
 `
 
-	clock, et, replayErr, tm := testStreamer(t, "TestStream_Alert", script)
+	clock, et, replayErr, tm := testStreamer(t, "TestStream_Alert", script, nil)
 	defer tm.Close()
 	c := victorops.NewConfig()
 	c.URL = ts.URL
@@ -1674,7 +1780,7 @@ stream
 		.post('` + ts.URL + `')
 `
 
-	clock, et, replayErr, tm := testStreamer(t, "TestStream_AlertSigma", script)
+	clock, et, replayErr, tm := testStreamer(t, "TestStream_AlertSigma", script, nil)
 	defer tm.Close()
 
 	// Move time forward
@@ -1821,7 +1927,7 @@ stream
 		done <- err
 	}))
 
-	clock, et, replayErr, tm := testStreamer(t, "TestStream_InfluxDBOut", script)
+	clock, et, replayErr, tm := testStreamer(t, "TestStream_InfluxDBOut", script, nil)
 	tm.InfluxDBService = influxdb
 	defer tm.Close()
 
@@ -1944,7 +2050,7 @@ topScores.sample(4s)
 		},
 	}
 
-	clock, et, replayErr, tm := testStreamer(t, "TestStream_TopSelector", script)
+	clock, et, replayErr, tm := testStreamer(t, "TestStream_TopSelector", script, nil)
 	defer tm.Close()
 
 	err := fastForwardTask(clock, et, replayErr, tm, 10*time.Second)
@@ -1992,6 +2098,7 @@ func testStreamer(
 	t *testing.T,
 	name,
 	script string,
+	udfService kapacitor.UDFService,
 ) (
 	clock.Setter,
 	*kapacitor.ExecutingTask,
@@ -2004,8 +2111,15 @@ func testStreamer(
 		wlog.SetLevel(wlog.OFF)
 	}
 
+	// Create a new execution env
+	tm := kapacitor.NewTaskMaster(logService)
+	tm.HTTPDService = httpService
+	tm.UDFService = udfService
+	tm.Open()
+	scope := tm.CreateTICKScope()
+
 	//Create the task
-	task, err := kapacitor.NewStreamer(name, script, dbrps)
+	task, err := kapacitor.NewTask(name, script, kapacitor.StreamTask, dbrps, scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2022,11 +2136,6 @@ func testStreamer(
 	// Use 1971 so that we don't get true negatives on Epoch 0 collisions
 	c := clock.New(time.Date(1971, 1, 1, 0, 0, 0, 0, time.UTC))
 	r := kapacitor.NewReplay(c)
-
-	// Create a new execution env
-	tm := kapacitor.NewTaskMaster(logService)
-	tm.HTTPDService = httpService
-	tm.Open()
 
 	//Start the task
 	et, err := tm.StartTask(task)
@@ -2072,7 +2181,7 @@ func testStreamerNoOutput(
 	script string,
 	duration time.Duration,
 ) {
-	clock, et, replayErr, tm := testStreamer(t, name, script)
+	clock, et, replayErr, tm := testStreamer(t, name, script, nil)
 	err := fastForwardTask(clock, et, replayErr, tm, duration)
 	if err != nil {
 		t.Error(err)
@@ -2086,9 +2195,10 @@ func testStreamerWithOutput(
 	script string,
 	duration time.Duration,
 	er kapacitor.Result,
-	ignoreOrder ...bool,
+	udfService kapacitor.UDFService,
+	ignoreOrder bool,
 ) {
-	clock, et, replayErr, tm := testStreamer(t, name, script)
+	clock, et, replayErr, tm := testStreamer(t, name, script, udfService)
 	err := fastForwardTask(clock, et, replayErr, tm, duration)
 	if err != nil {
 		t.Error(err)
@@ -2108,7 +2218,7 @@ func testStreamerWithOutput(
 
 	// Assert we got the expected result
 	result := kapacitor.ResultFromJSON(resp.Body)
-	if len(ignoreOrder) > 0 && ignoreOrder[0] {
+	if ignoreOrder {
 		if eq, msg := compareResultsIgnoreSeriesOrder(er, result); !eq {
 			t.Error(msg)
 		}

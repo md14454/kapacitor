@@ -2,6 +2,7 @@ package kapacitor
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/influxdata/kapacitor/models"
@@ -34,13 +35,13 @@ type MapNode struct {
 	parallel int
 }
 
-func newMapNode(et *ExecutingTask, n *pipeline.MapNode) (*MapNode, error) {
+func newMapNode(et *ExecutingTask, n *pipeline.MapNode, l *log.Logger) (*MapNode, error) {
 	f, ok := n.Map.(MapInfo)
 	if !ok {
 		return nil, fmt.Errorf("invalid map given to map node %T", n.Map)
 	}
 	m := &MapNode{
-		node:     node{Node: n, et: et},
+		node:     node{Node: n, et: et, logger: l},
 		mr:       n,
 		f:        f.Func,
 		field:    f.Field,
@@ -160,13 +161,13 @@ type ReduceNode struct {
 	f ReduceFunc
 }
 
-func newReduceNode(et *ExecutingTask, n *pipeline.ReduceNode) (*ReduceNode, error) {
+func newReduceNode(et *ExecutingTask, n *pipeline.ReduceNode, l *log.Logger) (*ReduceNode, error) {
 	f, ok := n.Reduce.(ReduceFunc)
 	if !ok {
 		return nil, fmt.Errorf("invalid func given to batch reduce node %T", n.Reduce)
 	}
 	b := &ReduceNode{
-		node: node{Node: n, et: et},
+		node: node{Node: n, et: et, logger: l},
 		r:    n,
 		f:    f,
 	}

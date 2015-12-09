@@ -2,6 +2,7 @@ package kapacitor
 
 import (
 	"errors"
+	"log"
 
 	"github.com/influxdata/kapacitor/models"
 	"github.com/influxdata/kapacitor/pipeline"
@@ -16,9 +17,9 @@ type WhereNode struct {
 }
 
 // Create a new WhereNode which filters down the batch or stream by a condition
-func newWhereNode(et *ExecutingTask, n *pipeline.WhereNode) (wn *WhereNode, err error) {
+func newWhereNode(et *ExecutingTask, n *pipeline.WhereNode, l *log.Logger) (wn *WhereNode, err error) {
 	wn = &WhereNode{
-		node:        node{Node: n, et: et},
+		node:        node{Node: n, et: et, logger: l},
 		w:           n,
 		expressions: make(map[models.GroupID]*tick.StatefulExpr),
 	}

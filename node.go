@@ -20,9 +20,6 @@ type Node interface {
 	start()
 	stop()
 
-	// set the logger
-	setLogger(logger *log.Logger)
-
 	// wait for the node to finish processing and return any errors
 	Err() error
 
@@ -64,10 +61,6 @@ func (n *node) abortParentEdges() {
 	for _, in := range n.ins {
 		in.Abort()
 	}
-}
-
-func (n *node) setLogger(l *log.Logger) {
-	n.logger = l
 }
 
 func (n *node) start() {

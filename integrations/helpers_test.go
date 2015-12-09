@@ -104,3 +104,16 @@ type LogService struct{}
 func (l *LogService) NewLogger(prefix string, flag int) *log.Logger {
 	return wlog.New(os.Stderr, prefix, flag)
 }
+
+type UDFService struct {
+	FunctionListFunc func() []string
+	FunctionInfoFunc func(name string) (kapacitor.UDFProcessInfo, bool)
+}
+
+func (u UDFService) FunctionList() []string {
+	return u.FunctionListFunc()
+}
+
+func (u UDFService) FunctionInfo(name string) (kapacitor.UDFProcessInfo, bool) {
+	return u.FunctionInfoFunc(name)
+}

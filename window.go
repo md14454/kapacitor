@@ -16,10 +16,10 @@ type WindowNode struct {
 }
 
 // Create a new  WindowNode, which windows data for a period of time and emits the window.
-func newWindowNode(et *ExecutingTask, n *pipeline.WindowNode) (*WindowNode, error) {
+func newWindowNode(et *ExecutingTask, n *pipeline.WindowNode, l *log.Logger) (*WindowNode, error) {
 	wn := &WindowNode{
 		w:    n,
-		node: node{Node: n, et: et},
+		node: node{Node: n, et: et, logger: l},
 	}
 	wn.node.runF = wn.runWindow
 	return wn, nil

@@ -55,7 +55,7 @@ type Task struct {
 	DBRPs    []DBRP
 }
 
-func NewTask(name, script string, tt TaskType, dbrps []DBRP) (*Task, error) {
+func NewTask(name, script string, tt TaskType, dbrps []DBRP, scope *tick.Scope) (*Task, error) {
 	t := &Task{
 		Name:  name,
 		Type:  tt,
@@ -70,10 +70,6 @@ func NewTask(name, script string, tt TaskType, dbrps []DBRP) (*Task, error) {
 		srcEdge = pipeline.BatchEdge
 	}
 
-	scope := tick.NewScope()
-	scope.Set("influxql", newInfluxQL())
-	scope.Set("time", func(d time.Duration) time.Duration { return d })
-
 	p, err := pipeline.CreatePipeline(script, srcEdge, scope)
 	if err != nil {
 		return nil, err
@@ -84,16 +80,6 @@ func NewTask(name, script string, tt TaskType, dbrps []DBRP) (*Task, error) {
 
 func (t *Task) Dot() []byte {
 	return t.Pipeline.Dot(t.Name)
-}
-
-// Create a new streamer task from a script.
-func NewStreamer(name, script string, dbrps []DBRP) (*Task, error) {
-	return NewTask(name, script, StreamTask, dbrps)
-}
-
-// Create a new batcher task from a script.
-func NewBatcher(name, script string, dbrps []DBRP) (*Task, error) {
-	return NewTask(name, script, BatchTask, dbrps)
 }
 
 // ----------------------------------
@@ -152,14 +138,14 @@ func (et *ExecutingTask) link() error {
 
 	// Walk Pipeline and create equivalent executing nodes
 	err := et.Task.Pipeline.Walk(func(n pipeline.Node) error {
-		en, err := et.createNode(n)
+		l := et.tm.LogService.NewLogger(
+			fmt.Sprintf("[%s:%s] ", et.Task.Name, n.Name()),
+			log.LstdFlags,
+		)
+		en, err := et.createNode(n, l)
 		if err != nil {
 			return err
 		}
-		en.setLogger(et.tm.LogService.NewLogger(
-			fmt.Sprintf("[%s:%s] ", et.Task.Name, en.Name()),
-			log.LstdFlags,
-		))
 		et.lookup[n.ID()] = en
 		// Save the walk order
 		et.nodes = append(et.nodes, en)
@@ -303,40 +289,42 @@ func (et *ExecutingTask) EDot() []byte {
 }
 
 // Create a  node from a given pipeline node.
-func (et *ExecutingTask) createNode(p pipeline.Node) (Node, error) {
+func (et *ExecutingTask) createNode(p pipeline.Node, l *log.Logger) (Node, error) {
 	switch t := p.(type) {
 	case *pipeline.StreamNode:
-		return newStreamNode(et, t)
+		return newStreamNode(et, t, l)
 	case *pipeline.SourceBatchNode:
-		return newSourceBatchNode(et, t)
+		return newSourceBatchNode(et, t, l)
 	case *pipeline.BatchNode:
-		return newBatchNode(et, t)
+		return newBatchNode(et, t, l)
 	case *pipeline.WindowNode:
-		return newWindowNode(et, t)
+		return newWindowNode(et, t, l)
 	case *pipeline.HTTPOutNode:
-		return newHTTPOutNode(et, t)
+		return newHTTPOutNode(et, t, l)
 	case *pipeline.InfluxDBOutNode:
-		return newInfluxDBOutNode(et, t)
+		return newInfluxDBOutNode(et, t, l)
 	case *pipeline.MapNode:
-		return newMapNode(et, t)
+		return newMapNode(et, t, l)
 	case *pipeline.ReduceNode:
-		return newReduceNode(et, t)
+		return newReduceNode(et, t, l)
 	case *pipeline.AlertNode:
-		return newAlertNode(et, t)
+		return newAlertNode(et, t, l)
 	case *pipeline.GroupByNode:
-		return newGroupByNode(et, t)
+		return newGroupByNode(et, t, l)
 	case *pipeline.UnionNode:
-		return newUnionNode(et, t)
+		return newUnionNode(et, t, l)
 	case *pipeline.JoinNode:
-		return newJoinNode(et, t)
+		return newJoinNode(et, t, l)
 	case *pipeline.EvalNode:
-		return newApplyNode(et, t)
+		return newEvalNode(et, t, l)
 	case *pipeline.WhereNode:
-		return newWhereNode(et, t)
+		return newWhereNode(et, t, l)
 	case *pipeline.SampleNode:
-		return newSampleNode(et, t)
+		return newSampleNode(et, t, l)
 	case *pipeline.DerivativeNode:
-		return newDerivativeNode(et, t)
+		return newDerivativeNode(et, t, l)
+	case *pipeline.UDFNode:
+		return newUDFNode(et, t, l)
 	default:
 		return nil, fmt.Errorf("unknown pipeline node type %T", p)
 	}
